@@ -1,187 +1,737 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PlasTrack · Pasadas satelitales sobre Galápagos</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
-<style>
-  :root {
-    --fondo: #eaf1f3; --tarjeta: #ffffff; --tinta: #0f2d37; --suave: #5a7580;
-    --linea: #cfdde2; --apta: #12907f; --noapta: #d9552b; --mar: #0b3c49;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --fondo: #0a1a20; --tarjeta: #12282f; --tinta: #e6f1f4; --suave: #8fa9b3; --linea: #234049; --mar: #06242c; }
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Manrope", system-ui, sans-serif; background: var(--fondo); color: var(--tinta); line-height: 1.5; }
-  header { background: var(--mar); color: #e6f1f4; padding: 28px 20px 24px; }
-  .wrap { max-width: 1180px; margin: 0 auto; }
-  header h1 { margin: 0 0 4px; font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: -0.02em; }
-  header p { margin: 0; max-width: 62ch; color: #a9c6cf; }
-  main { padding: 20px; }
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 20px; }
-  .card { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 10px; padding: 16px 18px; }
-  .kpi .valor { font-size: 2rem; font-weight: 800; line-height: 1.1; }
-  .kpi .nombre { font-weight: 600; margin-top: 4px; }
-  .kpi .nota { font-size: .82rem; color: var(--suave); }
-  .kpi.ok { border-left: 5px solid var(--apta); }
-  .kpi.alerta { border-left: 5px solid var(--noapta); }
-  .kpi.neutro { border-left: 5px solid var(--suave); }
-  .paneles { display: grid; grid-template-columns: 1fr; gap: 20px; }
-  @media (min-width: 900px) { .paneles { grid-template-columns: 1.15fr 1fr; } }
-  h2 { font-size: 1.05rem; margin: 0 0 10px; }
-  #mapa { height: 420px; border-radius: 8px; border: 1px solid var(--linea); }
-  .graf { position: relative; height: 420px; }
-  .leyenda { font-size: .85rem; color: var(--suave); margin-top: 8px; }
-  .punto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; }
-  #error { display: none; background: #fde8e1; color: #7a2410; border: 1px solid #f0b8a5; padding: 14px; border-radius: 8px; margin-bottom: 16px; }
-  footer { padding: 16px 20px 28px; color: var(--suave); font-size: .85rem; text-align: center; }
-  :focus-visible { outline: 3px solid #f2b705; outline-offset: 2px; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explora pasadas satelitales simuladas sobre Galápagos, su nubosidad y el índice de acumulación.">
+  <meta name="theme-color" content="#0b3c49">
+  <title>PlasTrack · Pasadas satelitales sobre Galápagos</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --fondo: #eaf1f3;
+      --tarjeta: #fff;
+      --tinta: #0f2d37;
+      --suave: #425f69;
+      --linea: #c5d5da;
+      --apta: #087466;
+      --noapta: #a9361a;
+      --mar: #0b3c49;
+      --alerta-fondo: #fff0e9;
+      --alerta-tinta: #76260f;
+      --fila-noapta: #fff1ec;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--fondo);
+      color: var(--tinta);
+      line-height: 1.5;
+    }
+    header { background: var(--mar); color: #fff; padding: 28px 20px 24px; }
+    .wrap { max-width: 1180px; margin: 0 auto; }
+    header h1 { margin: 0 0 4px; font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: -.02em; }
+    header p { margin: 0; max-width: 62ch; color: #d3e6eb; }
+    main { padding: 20px; }
+    h2 { font-size: 1.05rem; margin: 0 0 12px; }
+    button, select, input { font: inherit; }
+    button, select, input[type="date"] {
+      min-height: 42px;
+      color: var(--tinta);
+      background: var(--tarjeta);
+      border: 1px solid #718b94;
+      border-radius: 6px;
+    }
+    button { cursor: pointer; }
+    button:hover { background: #eaf1f3; }
+    :focus-visible { outline: 3px solid #a56d00; outline-offset: 3px; }
+
+    /* Los filtros ocupan una sola columna en pantallas estrechas. */
+    .filtros {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+    .campo { display: grid; gap: 5px; }
+    .campo > label, .campo > span { font-size: .9rem; font-weight: 700; }
+    .campo select, .campo input[type="date"] { width: 100%; padding: 7px 9px; }
+    .check-campo { display: flex; min-height: 42px; align-items: center; gap: 9px; }
+    .check-campo input { width: 20px; height: 20px; accent-color: var(--apta); }
+    .boton-secundario { padding: 8px 12px; font-weight: 700; }
+    #estado { min-height: 1.5em; margin: 0 0 12px; color: var(--suave); }
+    #error {
+      display: none;
+      background: var(--alerta-fondo);
+      color: var(--alerta-tinta);
+      border: 1px solid #ba5735;
+      padding: 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    /* Las tarjetas muestran tanto el color como una etiqueta de estado textual. */
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 14px; margin-bottom: 20px; }
+    .card { min-width: 0; background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 10px; padding: 16px 18px; }
+    .kpi { position: relative; }
+    .kpi.ok { border-left: 5px solid var(--apta); }
+    .kpi.alerta { border-left: 5px solid var(--noapta); }
+    .kpi.neutro { border-left: 5px solid var(--suave); }
+    .kpi .valor { font-size: 2rem; font-weight: 800; line-height: 1.2; overflow-wrap: anywhere; }
+    .kpi .nombre { font-weight: 700; margin-top: 4px; }
+    .kpi .nota { font-size: .85rem; color: var(--suave); }
+    .estado-kpi { font-weight: 700; }
+    .kpi.ok .estado-kpi { color: var(--apta); }
+    .kpi.alerta .estado-kpi { color: var(--noapta); }
+    .ayuda { position: absolute; top: 10px; right: 10px; }
+    .ayuda button {
+      width: 30px;
+      min-height: 30px;
+      padding: 0;
+      border-radius: 50%;
+      font-weight: 800;
+    }
+    .tooltip {
+      position: absolute;
+      z-index: 20;
+      top: 36px;
+      right: 0;
+      width: min(250px, 75vw);
+      padding: 9px 11px;
+      color: #fff;
+      background: #173740;
+      border-radius: 6px;
+      font-size: .82rem;
+      font-weight: 400;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity .15s ease;
+    }
+    .ayuda:hover .tooltip, .ayuda:focus-within .tooltip { visibility: visible; opacity: 1; }
+
+    /* Mapa y gráfico conservan sus paneles y se apilan en móvil. */
+    .paneles { display: grid; grid-template-columns: 1fr; gap: 20px; }
+    #mapa { height: 380px; border-radius: 8px; border: 1px solid var(--linea); }
+    .graf { position: relative; height: 360px; }
+    .acciones-grafico { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .acciones-grafico button { padding: 6px 10px; }
+    .acciones-grafico button[aria-pressed="true"] { color: #fff; background: var(--mar); border-color: var(--mar); }
+    .leyenda { font-size: .88rem; color: var(--suave); margin: 9px 0 0; }
+    .punto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; }
+
+    /* La tabla conserva sus columnas mediante desplazamiento horizontal en móvil. */
+    .tabla-panel { margin-top: 20px; }
+    .tabla-desplazable { max-width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid var(--linea); text-align: left; white-space: nowrap; }
+    th { background: #eaf1f3; }
+    th button { min-height: 34px; padding: 4px 6px; border: 0; background: transparent; font-weight: 800; }
+    tr.no-apta { background: var(--fila-noapta); }
+    .etiqueta-apta { color: var(--apta); font-weight: 800; }
+    .etiqueta-no-apta { color: var(--noapta); font-weight: 800; }
+    .sr-solo {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    footer { padding: 16px 20px 28px; color: var(--suave); font-size: .85rem; text-align: center; }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --fondo: #0a1a20;
+        --tarjeta: #12282f;
+        --tinta: #f0f7f9;
+        --suave: #bed0d6;
+        --linea: #38545d;
+        --apta: #60d4bd;
+        --noapta: #ff9a79;
+        --mar: #06242c;
+        --alerta-fondo: #48291f;
+        --alerta-tinta: #ffe2d5;
+        --fila-noapta: #3b251f;
+      }
+      button:hover, th { background: #203b43; }
+    }
+    @media (min-width: 900px) { .paneles { grid-template-columns: 1.15fr 1fr; } }
+    @media (max-width: 420px) {
+      main { padding: 14px; }
+      header { padding: 22px 14px; }
+      .card { padding: 14px; }
+      #mapa { height: 320px; }
+      .graf { height: 320px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <h1>PlasTrack</h1>
-    <p>Pasadas satelitales Sentinel-2 sobre Galápagos: cuáles sirven para detectar plástico flotante y dónde se acumula.</p>
-  </div>
-</header>
+  <header>
+    <div class="wrap">
+      <h1>PlasTrack</h1>
+      <p>Pasadas satelitales Sentinel-2 sobre Galápagos: cuáles sirven para detectar plástico flotante y dónde se acumula.</p>
+    </div>
+  </header>
 
-<main class="wrap">
-  <div id="error" role="alert"></div>
+  <main class="wrap">
+    <p id="estado" role="status" aria-live="polite">Cargando los registros satelitales…</p>
+    <div id="error" role="alert"></div>
 
-  <section class="kpis" id="kpis" aria-label="Indicadores clave"></section>
-
-  <div class="paneles">
-    <section class="card" aria-label="Mapa de pasadas">
-      <h2>Mapa de pasadas y zonas de acumulación</h2>
-      <div id="mapa"></div>
-      <p class="leyenda">
-        <span class="punto" style="background:var(--apta)"></span>Pasada apta
-        <span class="punto" style="background:var(--noapta)"></span>No apta
-        &nbsp;· La capa de calor muestra el índice de acumulación.
-      </p>
+    <section class="filtros" aria-label="Filtros de pasadas">
+      <div class="campo">
+        <label for="filtro-zona">Zona (isla)</label>
+        <select id="filtro-zona" disabled>
+          <option value="">Todas las zonas</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="filtro-desde">Desde</label>
+        <input id="filtro-desde" type="date" disabled>
+      </div>
+      <div class="campo">
+        <label for="filtro-hasta">Hasta</label>
+        <input id="filtro-hasta" type="date" disabled>
+      </div>
+      <label class="check-campo" for="filtro-aptas">
+        <input id="filtro-aptas" type="checkbox" role="switch" disabled>
+        Solo pasadas aptas
+      </label>
+      <button id="restablecer-filtros" class="boton-secundario" type="button" disabled>Quitar filtros</button>
     </section>
 
-    <section class="card" aria-label="Tendencia">
-      <h2>Nubosidad y aptitud del sensor por fecha</h2>
-      <div class="graf"><canvas id="grafico" role="img" aria-label="Gráfico de nubosidad y aptitud por fecha"></canvas></div>
-      <p class="leyenda">Una pasada es apta con nubosidad ≤ 30 % y aptitud ≥ 0,6.</p>
+    <section class="kpis" id="kpis" aria-label="Indicadores clave"></section>
+
+    <div class="paneles">
+      <section class="card" aria-labelledby="titulo-mapa">
+        <h2 id="titulo-mapa">Mapa de pasadas y zonas de acumulación</h2>
+        <div id="mapa" role="region" aria-label="Mapa interactivo de las pasadas satelitales sobre Galápagos"></div>
+        <button id="restablecer-mapa" class="boton-secundario" type="button">Restablecer vista del mapa</button>
+        <p class="leyenda" aria-label="Leyenda de marcadores y capa de calor">
+          <span class="punto" style="background:#087466"></span>Pasada apta
+          <span class="punto" style="background:#a9361a"></span>No apta.
+          La capa de calor representa el índice de acumulación.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="titulo-grafico">
+        <h2 id="titulo-grafico">Nubosidad y aptitud del sensor por fecha</h2>
+        <div class="acciones-grafico" role="group" aria-label="Vista del gráfico">
+          <button id="vista-lineas" type="button" aria-pressed="true">Líneas por fecha</button>
+          <button id="vista-barras" type="button" aria-pressed="false">Acumulación por zona</button>
+        </div>
+        <div class="graf">
+          <canvas id="grafico" role="img" aria-label="Gráfico de nubosidad y aptitud por fecha" aria-describedby="descripcion-grafico"></canvas>
+        </div>
+        <p id="descripcion-grafico" class="leyenda">Una pasada es apta con nubosidad ≤ 30 % y aptitud ≥ 0,6.</p>
+      </section>
+    </div>
+
+    <section class="card tabla-panel" aria-labelledby="titulo-tabla">
+      <h2 id="titulo-tabla">Registros satelitales</h2>
+      <div class="tabla-desplazable" role="region" aria-label="Tabla de registros; puede desplazarse horizontalmente" tabindex="0">
+        <table>
+          <caption class="sr-solo">Pasadas según los filtros activos. Selecciona un encabezado para ordenar.</caption>
+          <thead><tr id="encabezados-tabla"></tr></thead>
+          <tbody id="filas-tabla"></tbody>
+        </table>
+      </div>
     </section>
-  </div>
-</main>
+  </main>
 
-<footer>Datos simulados (data_copernicus_sample.json) con fines académicos. No son mediciones reales.</footer>
+  <footer>Datos simulados (data_copernicus_sample.json) con fines académicos. No son mediciones reales.</footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script>
-  const UMBRAL_NUBES = 30;
-  const UMBRAL_APTITUD = 0.6;
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script>
+    // Umbrales de negocio: se aplican sin alterar los campos originales del JSON.
+    const UMBRAL_NUBES = 30;
+    const UMBRAL_APTITUD = 0.6;
+    const metaPorcentajeAptas = 50;
+    const metaNubosidadPromedio = 35;
+    let registros = [];
+    let mapa;
+    let marcadores;
+    let calor;
+    let grafico;
+    let vistaGrafico = "lineas";
+    let ordenTabla = { campo: "fecha", direccion: "asc" };
+    let limitesGalapagos;
 
-  const esValido = r =>
-    /^\d{4}-\d{2}-\d{2}$/.test(r.fecha) &&
-    r.nubosidad_pct >= 0 && r.nubosidad_pct <= 100 &&
-    r.aptitud_sensor >= 0 && r.aptitud_sensor <= 1 &&
-    Number.isFinite(r.latitud) && Number.isFinite(r.longitud);
-
-  const esApta = r => r.nubosidad_pct <= UMBRAL_NUBES && r.aptitud_sensor >= UMBRAL_APTITUD;
-  const promedio = a => a.reduce((s, x) => s + x, 0) / a.length;
-  const fmtFecha = f => new Date(f + "T00:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" });
-
-  fetch("data_copernicus_sample.json")
-    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-    .then(datos => {
-      const registros = datos.filter(esValido).sort((a, b) => a.fecha.localeCompare(b.fecha));
-      if (!registros.length) throw new Error("No hay registros válidos");
-      dibujarKpis(registros);
-      dibujarMapa(registros);
-      dibujarGrafico(registros);
-    })
-    .catch(e => {
-      const caja = document.getElementById("error");
-      caja.style.display = "block";90
-      caja.textContent = "No se pudo cargar data_copernicus_sample.json (" + e.message +
-        "). Verifica que el archivo esté en la misma carpeta que index.html y abre la página desde GitHub Pages, no con doble clic.";
+    const esApta = registro =>
+      registro.nubosidad_pct <= UMBRAL_NUBES && registro.aptitud_sensor >= UMBRAL_APTITUD;
+    const promedio = valores => valores.length
+      ? valores.reduce((suma, valor) => suma + valor, 0) / valores.length
+      : null;
+    const fmtFecha = fecha => new Date(fecha + "T00:00:00").toLocaleDateString("es-EC", {
+      day: "numeric", month: "short", year: "numeric"
+    });
+    const fmtDecimal = valor => Number(valor).toLocaleString("es-EC", {
+      minimumFractionDigits: 2, maximumFractionDigits: 2
     });
 
-  function dibujarKpis(r) {
-    const aptas = r.filter(esApta);
-    const pctAptas = aptas.length / r.length * 100;
-    const nubes = promedio(r.map(x => x.nubosidad_pct));
-    const aptitud = promedio(r.map(x => x.aptitud_sensor));
-    const ultima = aptas.length ? aptas[aptas.length - 1].fecha : null;
-    const dias = ultima ? Math.floor((Date.now() - new Date(ultima + "T00:00:00")) / 864e5) : null;
+    // Valida el formato esperado para evitar datos incompletos en visualizaciones y filtros.
+    function esValido(registro) {
+      return registro &&
+        typeof registro.fecha === "string" &&
+        /^\d{4}-\d{2}-\d{2}$/.test(registro.fecha) &&
+        typeof registro.zona === "string" && registro.zona.length > 0 &&
+        typeof registro.satelite === "string" && registro.satelite.length > 0 &&
+        Number.isFinite(registro.latitud) && Number.isFinite(registro.longitud) &&
+        Number.isFinite(registro.nubosidad_pct) &&
+        registro.nubosidad_pct >= 0 && registro.nubosidad_pct <= 100 &&
+        Number.isFinite(registro.aptitud_sensor) &&
+        registro.aptitud_sensor >= 0 && registro.aptitud_sensor <= 1 &&
+        Number.isFinite(registro.indice_acumulacion) &&
+        registro.indice_acumulacion >= 0 && registro.indice_acumulacion <= 1;
+    }
 
-    const kpis = [
-      { n: "Pasadas totales", v: r.length, nota: "Registros válidos cargados", c: "neutro" },
-      { n: "Pasadas aptas", v: pctAptas.toFixed(0) + " %", nota: aptas.length + " de " + r.length + " · meta ≥ 50 %", c: pctAptas >= 50 ? "ok" : "alerta" },
-      { n: "Nubosidad promedio", v: nubes.toFixed(1) + " %", nota: "Meta ≤ 35 %", c: nubes <= 35 ? "ok" : "alerta" },
-      { n: "Aptitud promedio", v: aptitud.toFixed(2), nota: "Escala de 0 a 1 · meta ≥ 0,6", c: aptitud >= UMBRAL_APTITUD ? "ok" : "alerta" },
-      { n: "Última pasada apta", v: ultima ? fmtFecha(ultima) : "Sin datos", nota: dias !== null ? "Hace " + dias + " días" : "Ninguna cumple la regla", c: "neutro" }
-    ];
-    document.getElementById("kpis").innerHTML = kpis.map(k =>
-      `<article class="card kpi ${k.c}"><div class="valor">${k.v}</div><div class="nombre">${k.n}</div><div class="nota">${k.nota}</div></article>`
-    ).join("");
-  }
+    document.addEventListener("DOMContentLoaded", iniciar);
 
-  function dibujarMapa(r) {
-    const mapa = L.map("mapa", { scrollWheelZoom: false }).setView([-0.7, -90.4], 8);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 12, attribution: "© OpenStreetMap"
-    }).addTo(mapa);
-
-    const marcadores = L.layerGroup();
-    r.forEach(x => {
-      const apta = esApta(x);
-      L.circleMarker([x.latitud, x.longitud], {
-        radius: 8, color: "#fff", weight: 2, fillOpacity: 0.95,
-        fillColor: apta ? "#12907f" : "#d9552b"
-      }).bindPopup(
-        `<strong>${x.zona}</strong><br>${fmtFecha(x.fecha)} · ${x.satelite}<br>` +
-        `Nubosidad: ${x.nubosidad_pct} %<br>Aptitud: ${x.aptitud_sensor}<br>` +
-        `Acumulación: ${x.indice_acumulacion}<br><strong>${apta ? "Apta" : "No apta"}</strong>`
-      ).addTo(marcadores);
-    });
-
-    const calor = L.heatLayer(r.map(x => [x.latitud, x.longitud, x.indice_acumulacion]), {
-      radius: 38, blur: 28, minOpacity: 0.35,
-      gradient: { 0.3: "#3b9ae1", 0.6: "#f2b705", 1: "#d62828" }
-    });
-
-    calor.addTo(mapa);
-    marcadores.addTo(mapa);
-    L.control.layers(null, { "Mapa de calor (acumulación)": calor, "Pasadas satelitales": marcadores }, { collapsed: false }).addTo(mapa);
-    mapa.fitBounds(L.latLngBounds(r.map(x => [x.latitud, x.longitud])).pad(0.2));
-  }
-
-  function dibujarGrafico(r) {
-    new Chart(document.getElementById("grafico"), {
-      type: "line",
-      data: {
-        labels: r.map(x => fmtFecha(x.fecha)),
-        datasets: [
-          { label: "Nubosidad (%)", data: r.map(x => x.nubosidad_pct), borderColor: "#d9552b", backgroundColor: "#d9552b", yAxisID: "yNubes", tension: 0.3 },
-          { label: "Aptitud del sensor (0–1)", data: r.map(x => x.aptitud_sensor), borderColor: "#12907f", backgroundColor: "#12907f", yAxisID: "yAptitud", tension: 0.3 }
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        interaction: { mode: "index", intersect: false },
-        plugins: { legend: { position: "bottom" } },
-        scales: {
-          yNubes: { position: "left", min: 0, max: 100, title: { display: true, text: "Nubosidad (%)" } },
-          yAptitud: { position: "right", min: 0, max: 1, grid: { drawOnChartArea: false }, title: { display: true, text: "Aptitud (0–1)" } },
-          x: { ticks: { maxRotation: 60, autoSkip: true } }
+    // Carga las dependencias y los datos; los errores quedan visibles para el usuario.
+    async function iniciar() {
+      const estado = document.getElementById("estado");
+      try {
+        if (!window.L || !window.Chart || !L.heatLayer) {
+          throw new Error("No se pudieron cargar las librerías del mapa o del gráfico.");
         }
+        const respuesta = await fetch("data_copernicus_sample.json");
+        if (!respuesta.ok) throw new Error("HTTP " + respuesta.status);
+        const datos = await respuesta.json();
+        if (!Array.isArray(datos)) throw new Error("El archivo no contiene una lista de registros.");
+        registros = datos.filter(esValido).sort((a, b) => a.fecha.localeCompare(b.fecha));
+        if (!registros.length) throw new Error("No hay registros válidos para mostrar.");
+
+        prepararFiltros();
+        prepararTabla();
+        iniciarMapa();
+        conectarControles();
+        document.querySelectorAll(".filtros input, .filtros select, .filtros button")
+          .forEach(control => { control.disabled = false; });
+        actualizarVista();
+        estado.textContent = "Se cargaron " + registros.length + " registros.";
+      } catch (error) {
+        estado.textContent = "";
+        const caja = document.getElementById("error");
+        caja.style.display = "block";
+        caja.textContent = "No se pudieron cargar los datos de PlasTrack: " + error.message +
+          " Verifica que data_copernicus_sample.json esté junto a index.html y que GitHub Pages pueda acceder a las librerías externas.";
       }
-    });
-  }
-</script>
+    }
+
+    // Inicializa el selector y los límites del rango con las fechas disponibles.
+    function prepararFiltros() {
+      const zonas = [...new Set(registros.map(registro => registro.zona))]
+        .sort((a, b) => a.localeCompare(b, "es"));
+      const selector = document.getElementById("filtro-zona");
+      selector.replaceChildren(selector.querySelector('option[value=""]'));
+      zonas.forEach(zona => {
+        const opcion = document.createElement("option");
+        opcion.value = zona;
+        opcion.textContent = zona;
+        selector.append(opcion);
+      });
+      const fechas = registros.map(registro => registro.fecha).sort();
+      document.getElementById("filtro-desde").value = fechas[0];
+      document.getElementById("filtro-desde").min = fechas[0];
+      document.getElementById("filtro-desde").max = fechas[fechas.length - 1];
+      document.getElementById("filtro-hasta").value = fechas[fechas.length - 1];
+      document.getElementById("filtro-hasta").min = fechas[0];
+      document.getElementById("filtro-hasta").max = fechas[fechas.length - 1];
+    }
+
+    // Crea encabezados ordenables con botones nativos accesibles por teclado.
+    function prepararTabla() {
+      const columnas = [
+        ["id", "ID"], ["fecha", "Fecha"], ["satelite", "Satélite"], ["zona", "Zona"],
+        ["nubosidad_pct", "Nubosidad (%)"], ["aptitud_sensor", "Aptitud"],
+        ["indice_acumulacion", "Acumulación"], ["apta", "Estado"]
+      ];
+      const fila = document.getElementById("encabezados-tabla");
+      columnas.forEach(([campo, etiqueta]) => {
+        const celda = document.createElement("th");
+        celda.scope = "col";
+        celda.dataset.campo = campo;
+        const boton = document.createElement("button");
+        boton.type = "button";
+        boton.textContent = etiqueta;
+        boton.addEventListener("click", () => ordenarPor(campo));
+        celda.append(boton);
+        fila.append(celda);
+      });
+    }
+
+    // Conecta filtros y botones para actualizar las tres visualizaciones a la vez.
+    function conectarControles() {
+      ["filtro-zona", "filtro-desde", "filtro-hasta", "filtro-aptas"].forEach(id => {
+        document.getElementById(id).addEventListener("change", actualizarVista);
+      });
+      document.getElementById("restablecer-filtros").addEventListener("click", () => {
+        document.getElementById("filtro-zona").value = "";
+        document.getElementById("filtro-aptas").checked = false;
+        prepararFiltros();
+        actualizarVista();
+      });
+      document.getElementById("restablecer-mapa").addEventListener("click", () => {
+        if (limitesGalapagos) mapa.fitBounds(limitesGalapagos, { padding: [20, 20], maxZoom: 8 });
+      });
+      document.getElementById("vista-lineas").addEventListener("click", () => cambiarVistaGrafico("lineas"));
+      document.getElementById("vista-barras").addEventListener("click", () => cambiarVistaGrafico("barras"));
+    }
+
+    // Aplica todos los filtros y propaga exactamente el mismo conjunto a cada componente.
+    function obtenerRegistrosFiltrados() {
+      const zona = document.getElementById("filtro-zona").value;
+      const desde = document.getElementById("filtro-desde").value;
+      const hasta = document.getElementById("filtro-hasta").value;
+      const soloAptas = document.getElementById("filtro-aptas").checked;
+      return registros.filter(registro =>
+        (!zona || registro.zona === zona) &&
+        (!desde || registro.fecha >= desde) &&
+        (!hasta || registro.fecha <= hasta) &&
+        (!soloAptas || esApta(registro))
+      );
+    }
+
+    function actualizarVista() {
+      const filtrados = obtenerRegistrosFiltrados();
+      dibujarKpis(filtrados);
+      actualizarMapa(filtrados);
+      dibujarGrafico(filtrados);
+      dibujarTabla(filtrados);
+      document.getElementById("estado").textContent = filtrados.length
+        ? "Mostrando " + filtrados.length + " de " + registros.length + " registros."
+        : "No hay pasadas que coincidan con los filtros seleccionados.";
+    }
+
+    // Cada indicador explica sus datos y expresa el cumplimiento también con texto.
+    function dibujarKpis(datos) {
+      const aptas = datos.filter(esApta);
+      const porcentaje = datos.length ? aptas.length / datos.length * 100 : null;
+      const nubes = promedio(datos.map(registro => registro.nubosidad_pct));
+      const aptitud = promedio(datos.map(registro => registro.aptitud_sensor));
+      const ultima = aptas.length ? aptas[aptas.length - 1].fecha : null;
+      const dias = ultima ? Math.max(0, Math.floor((Date.now() - new Date(ultima + "T00:00:00")) / 864e5)) : null;
+      const indicadores = [
+        {
+          nombre: "Pasadas totales",
+          valor: datos.length,
+          nota: "Registros válidos con los filtros actuales",
+          detalle: "Cuenta los registros válidos después de aplicar zona, rango de fechas y el filtro de aptitud.",
+          clase: "neutro", estado: "Sin meta"
+        },
+        {
+          nombre: "Pasadas aptas",
+          valor: porcentaje === null ? "—" : porcentaje.toFixed(0) + " %",
+          nota: aptas.length + " de " + datos.length + " · meta ≥ 50 %",
+          detalle: "Pasadas aptas divididas entre las pasadas filtradas, multiplicado por 100. Apta: nubosidad ≤ 30 % y aptitud ≥ 0,6.",
+          clase: porcentaje === null ? "neutro" : porcentaje >= metaPorcentajeAptas ? "ok" : "alerta",
+          estado: porcentaje === null ? "Sin datos" : porcentaje >= metaPorcentajeAptas ? "✓ Meta cumplida" : "! Debajo de la meta"
+        },
+        {
+          nombre: "Nubosidad promedio",
+          valor: nubes === null ? "—" : nubes.toFixed(1) + " %",
+          nota: "Meta ≤ " + metaNubosidadPromedio + " %",
+          detalle: "Promedio aritmético de nubosidad_pct en los registros filtrados. La meta del indicador es ≤ 35 %.",
+          clase: nubes === null ? "neutro" : nubes <= metaNubosidadPromedio ? "ok" : "alerta",
+          estado: nubes === null ? "Sin datos" : nubes <= metaNubosidadPromedio ? "✓ Meta cumplida" : "! Sobre la meta"
+        },
+        {
+          nombre: "Aptitud promedio",
+          valor: aptitud === null ? "—" : fmtDecimal(aptitud),
+          nota: "Escala de 0 a 1 · meta ≥ 0,6",
+          detalle: "Promedio aritmético de aptitud_sensor en los registros filtrados; la meta es ≥ 0,6.",
+          clase: aptitud === null ? "neutro" : aptitud >= UMBRAL_APTITUD ? "ok" : "alerta",
+          estado: aptitud === null ? "Sin datos" : aptitud >= UMBRAL_APTITUD ? "✓ Meta cumplida" : "! Debajo de la meta"
+        },
+        {
+          nombre: "Última pasada apta",
+          valor: ultima ? fmtFecha(ultima) : "Sin datos",
+          nota: dias !== null ? "Hace " + dias + " días" : "Ninguna cumple la regla",
+          detalle: "Fecha más reciente, según los registros filtrados, que cumple simultáneamente los dos umbrales de aptitud.",
+          clase: "neutro", estado: ultima ? "✓ Hay una pasada apta" : "Sin pasadas aptas"
+        }
+      ];
+      const contenedor = document.getElementById("kpis");
+      contenedor.replaceChildren();
+      indicadores.forEach((indicador, indice) => {
+        const tarjeta = document.createElement("article");
+        tarjeta.className = "card kpi " + indicador.clase;
+        const valor = document.createElement("div");
+        valor.className = "valor";
+        valor.textContent = indicador.valor;
+        const nombre = document.createElement("div");
+        nombre.className = "nombre";
+        nombre.textContent = indicador.nombre;
+        const nota = document.createElement("div");
+        nota.className = "nota";
+        nota.textContent = indicador.nota;
+        const estado = document.createElement("div");
+        estado.className = "nota estado-kpi";
+        estado.textContent = indicador.estado;
+        const ayuda = document.createElement("span");
+        ayuda.className = "ayuda";
+        const boton = document.createElement("button");
+        boton.type = "button";
+        boton.textContent = "i";
+        boton.setAttribute("aria-label", "Cómo se calcula: " + indicador.nombre);
+        boton.setAttribute("aria-describedby", "tooltip-kpi-" + indice);
+        const tooltip = document.createElement("span");
+        tooltip.id = "tooltip-kpi-" + indice;
+        tooltip.className = "tooltip";
+        tooltip.setAttribute("role", "tooltip");
+        tooltip.textContent = indicador.detalle;
+        ayuda.append(boton, tooltip);
+        tarjeta.append(ayuda, valor, nombre, nota, estado);
+        contenedor.append(tarjeta);
+      });
+    }
+
+    // Crea el mapa y la leyenda fija para los tres niveles de intensidad.
+    function iniciarMapa() {
+      mapa = L.map("mapa", { scrollWheelZoom: false }).setView([-0.7, -90.4], 8);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 12,
+        attribution: "© OpenStreetMap"
+      }).addTo(mapa);
+      marcadores = L.layerGroup().addTo(mapa);
+      calor = L.heatLayer([], {
+        radius: 38,
+        blur: 28,
+        minOpacity: 0.35,
+        gradient: { 0.3: "#3b9ae1", 0.6: "#f2b705", 1: "#d62828" }
+      }).addTo(mapa);
+      L.control.layers(null, {
+        "Mapa de calor (acumulación)": calor,
+        "Pasadas satelitales": marcadores
+      }, { collapsed: false }).addTo(mapa);
+      const leyenda = L.control({ position: "bottomleft" });
+      leyenda.onAdd = () => {
+        const elemento = L.DomUtil.create("div", "card leyenda-calor");
+        elemento.style.cssText = "background:#fff;color:#0f2d37;padding:8px 10px;border:1px solid #80949a;border-radius:6px;line-height:1.4";
+        elemento.innerHTML = '<strong>Acumulación</strong><br><span style="color:#17659a">Bajo</span> · <span style="color:#805600">Medio</span> · <span style="color:#9e211c">Alto</span>';
+        return elemento;
+      };
+      leyenda.addTo(mapa);
+      limitesGalapagos = L.latLngBounds(registros.map(registro => [registro.latitud, registro.longitud]));
+      actualizarMapa(registros);
+    }
+
+    // Sustituye marcadores y calor a la vez; ajusta el zoom al subconjunto activo.
+    function actualizarMapa(datos) {
+      if (!mapa) return;
+      marcadores.clearLayers();
+      datos.forEach(registro => {
+        const apta = esApta(registro);
+        const marcador = L.circleMarker([registro.latitud, registro.longitud], {
+          radius: 8,
+          color: "#fff",
+          weight: 2,
+          fillOpacity: 0.95,
+          fillColor: apta ? "#087466" : "#a9361a"
+        });
+        const popup = document.createElement("div");
+        [
+          [registro.zona, true],
+          [fmtFecha(registro.fecha) + " · " + registro.satelite, false],
+          ["Nubosidad: " + registro.nubosidad_pct + " %", false],
+          ["Aptitud: " + fmtDecimal(registro.aptitud_sensor), false],
+          ["Acumulación: " + fmtDecimal(registro.indice_acumulacion), false],
+          [apta ? "Apta" : "No apta", true]
+        ].forEach(([texto, fuerte]) => {
+          const linea = document.createElement(fuerte ? "strong" : "div");
+          linea.textContent = texto;
+          popup.append(linea);
+        });
+        marcador.bindPopup(popup).addTo(marcadores);
+      });
+      calor.setLatLngs(datos.map(registro =>
+        [registro.latitud, registro.longitud, registro.indice_acumulacion]
+      ));
+      if (datos.length === 1) {
+        mapa.setView([datos[0].latitud, datos[0].longitud], 9);
+      } else if (datos.length > 1) {
+        mapa.fitBounds(L.latLngBounds(datos.map(registro =>
+          [registro.latitud, registro.longitud]
+        )).pad(0.2), { maxZoom: 10 });
+      } else {
+        mapa.fitBounds(limitesGalapagos, { padding: [20, 20], maxZoom: 8 });
+      }
+    }
+
+    // Cambia entre las tendencias con umbrales y el promedio de acumulación por zona.
+    function cambiarVistaGrafico(vista) {
+      vistaGrafico = vista;
+      document.getElementById("vista-lineas").setAttribute("aria-pressed", String(vista === "lineas"));
+      document.getElementById("vista-barras").setAttribute("aria-pressed", String(vista === "barras"));
+      dibujarGrafico(obtenerRegistrosFiltrados());
+    }
+
+    function dibujarGrafico(datos) {
+      if (grafico) grafico.destroy();
+      const lienzo = document.getElementById("grafico");
+      const descripcion = document.getElementById("descripcion-grafico");
+      if (vistaGrafico === "lineas") {
+        const etiquetas = datos.map(registro => fmtFecha(registro.fecha));
+        lienzo.setAttribute("aria-label", "Gráfico de nubosidad y aptitud por fecha con líneas de umbral");
+        descripcion.textContent = datos.length
+          ? "Nubosidad en porcentaje; su umbral es 30 %. Aptitud entre 0 y 1; su umbral es 0,6. " +
+            datos.length + " registros visibles. Una pasada apta cumple ambos umbrales."
+          : "No hay datos para los filtros seleccionados. Una pasada apta requiere nubosidad ≤ 30 % y aptitud ≥ 0,6.";
+        grafico = new Chart(lienzo, {
+          type: "line",
+          data: {
+            labels: etiquetas,
+            datasets: [
+              {
+                label: "Nubosidad (%)",
+                data: datos.map(registro => registro.nubosidad_pct),
+                borderColor: "#a9361a",
+                backgroundColor: "#a9361a",
+                yAxisID: "yNubes",
+                tension: 0.3
+              },
+              {
+                label: "Aptitud del sensor (0–1)",
+                data: datos.map(registro => registro.aptitud_sensor),
+                borderColor: "#087466",
+                backgroundColor: "#087466",
+                yAxisID: "yAptitud",
+                tension: 0.3
+              },
+              {
+                label: "Umbral de nubosidad (30 %)",
+                data: datos.map(() => UMBRAL_NUBES),
+                borderColor: "#7a260f",
+                borderDash: [6, 4],
+                pointRadius: 0,
+                borderWidth: 2,
+                yAxisID: "yNubes"
+              },
+              {
+                label: "Umbral de aptitud (0,6)",
+                data: datos.map(() => UMBRAL_APTITUD),
+                borderColor: "#07584e",
+                borderDash: [6, 4],
+                pointRadius: 0,
+                borderWidth: 2,
+                yAxisID: "yAptitud"
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: { legend: { position: "bottom" } },
+            scales: {
+              yNubes: {
+                position: "left", min: 0, max: 100,
+                title: { display: true, text: "Nubosidad (%)" }
+              },
+              yAptitud: {
+                position: "right", min: 0, max: 1,
+                grid: { drawOnChartArea: false },
+                title: { display: true, text: "Aptitud (0–1)" }
+              },
+              x: { ticks: { maxRotation: 60, autoSkip: true } }
+            }
+          }
+        });
+      } else {
+        const porZona = new Map();
+        datos.forEach(registro => {
+          if (!porZona.has(registro.zona)) porZona.set(registro.zona, []);
+          porZona.get(registro.zona).push(registro.indice_acumulacion);
+        });
+        const zonas = [...porZona.keys()].sort((a, b) => a.localeCompare(b, "es"));
+        lienzo.setAttribute("aria-label", "Gráfico de barras con el índice promedio de acumulación por zona");
+        descripcion.textContent = datos.length
+          ? "Promedio del índice de acumulación (0 a 1) para cada zona, calculado con los registros filtrados."
+          : "No hay datos para los filtros seleccionados.";
+        grafico = new Chart(lienzo, {
+          type: "bar",
+          data: {
+            labels: zonas,
+            datasets: [{
+              label: "Acumulación promedio (0–1)",
+              data: zonas.map(zona => promedio(porZona.get(zona))),
+              backgroundColor: "#17659a",
+              borderColor: "#104b73",
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "bottom" } },
+            scales: {
+              y: {
+                min: 0, max: 1,
+                title: { display: true, text: "Índice de acumulación promedio" }
+              },
+              x: { ticks: { autoSkip: false, maxRotation: 55, minRotation: 25 } }
+            }
+          }
+        });
+      }
+    }
+
+    // Ordena de forma estable por el campo seleccionado y resalta registros no aptos.
+    function ordenarPor(campo) {
+      ordenTabla = {
+        campo,
+        direccion: ordenTabla.campo === campo && ordenTabla.direccion === "asc" ? "desc" : "asc"
+      };
+      dibujarTabla(obtenerRegistrosFiltrados());
+    }
+
+    function dibujarTabla(datos) {
+      const multiplicador = ordenTabla.direccion === "asc" ? 1 : -1;
+      const ordenados = [...datos].sort((a, b) => {
+        const valorA = ordenTabla.campo === "apta" ? Number(esApta(a)) : a[ordenTabla.campo];
+        const valorB = ordenTabla.campo === "apta" ? Number(esApta(b)) : b[ordenTabla.campo];
+        return (typeof valorA === "string"
+          ? valorA.localeCompare(valorB, "es", { numeric: true })
+          : valorA - valorB) * multiplicador;
+      });
+      document.querySelectorAll("#encabezados-tabla th").forEach(celda => {
+        const orden = celda.dataset.campo === ordenTabla.campo
+          ? ordenTabla.direccion === "asc" ? "ascending" : "descending"
+          : "none";
+        celda.setAttribute("aria-sort", orden);
+      });
+      const cuerpo = document.getElementById("filas-tabla");
+      cuerpo.replaceChildren();
+      ordenados.forEach(registro => {
+        const apta = esApta(registro);
+        const fila = document.createElement("tr");
+        if (!apta) fila.className = "no-apta";
+        const valores = [
+          registro.id, fmtFecha(registro.fecha), registro.satelite, registro.zona,
+          registro.nubosidad_pct + " %", fmtDecimal(registro.aptitud_sensor),
+          fmtDecimal(registro.indice_acumulacion), apta ? "Apta" : "No apta"
+        ];
+        valores.forEach((valor, indice) => {
+          const celda = document.createElement("td");
+          celda.textContent = valor;
+          if (indice === valores.length - 1) {
+            celda.className = apta ? "etiqueta-apta" : "etiqueta-no-apta";
+          }
+          fila.append(celda);
+        });
+        cuerpo.append(fila);
+      });
+    }
+  </script>
 </body>
 </html>
