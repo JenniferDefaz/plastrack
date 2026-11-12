@@ -1,0 +1,17 @@
+[
+  {"id": 1,  "fecha": "2026-07-01", "satelite": "Sentinel-2A", "zona": "San Cristóbal", "latitud": -0.88, "longitud": -89.40, "nubosidad_pct": 12, "aptitud_sensor": 0.88, "indice_acumulacion": 0.72},
+  {"id": 2,  "fecha": "2026-07-06", "satelite": "Sentinel-2B", "zona": "Santa Cruz",    "latitud": -0.62, "longitud": -90.30, "nubosidad_pct": 45, "aptitud_sensor": 0.52, "indice_acumulacion": 0.35},
+  {"id": 3,  "fecha": "2026-07-11", "satelite": "Sentinel-2A", "zona": "Isabela",       "latitud": -0.95, "longitud": -91.05, "nubosidad_pct": 22, "aptitud_sensor": 0.78, "indice_acumulacion": 0.48},
+  {"id": 4,  "fecha": "2026-07-16", "satelite": "Sentinel-2B", "zona": "Floreana",      "latitud": -1.27, "longitud": -90.40, "nubosidad_pct": 68, "aptitud_sensor": 0.31, "indice_acumulacion": 0.20},
+  {"id": 5,  "fecha": "2026-07-21", "satelite": "Sentinel-2A", "zona": "Española",      "latitud": -1.35, "longitud": -89.65, "nubosidad_pct": 9,  "aptitud_sensor": 0.92, "indice_acumulacion": 0.81},
+  {"id": 6,  "fecha": "2026-07-26", "satelite": "Sentinel-2B", "zona": "San Cristóbal", "latitud": -0.95, "longitud": -89.35, "nubosidad_pct": 28, "aptitud_sensor": 0.71, "indice_acumulacion": 0.66},
+  {"id": 7,  "fecha": "2026-07-31", "satelite": "Sentinel-2A", "zona": "Santiago",      "latitud": -0.25, "longitud": -90.80, "nubosidad_pct": 55, "aptitud_sensor": 0.44, "indice_acumulacion": 0.30},
+  {"id": 8,  "fecha": "2026-08-05", "satelite": "Sentinel-2B", "zona": "Fernandina",    "latitud": -0.40, "longitud": -91.60, "nubosidad_pct": 18, "aptitud_sensor": 0.83, "indice_acumulacion": 0.25},
+  {"id": 9,  "fecha": "2026-08-10", "satelite": "Sentinel-2A", "zona": "Santa Cruz",    "latitud": -0.70, "longitud": -90.40, "nubosidad_pct": 33, "aptitud_sensor": 0.62, "indice_acumulacion": 0.40},
+  {"id": 10, "fecha": "2026-08-15", "satelite": "Sentinel-2B", "zona": "Genovesa",      "latitud": 0.30,  "longitud": -89.95, "nubosidad_pct": 74, "aptitud_sensor": 0.25, "indice_acumulacion": 0.15},
+  {"id": 11, "fecha": "2026-08-20", "satelite": "Sentinel-2A", "zona": "San Cristóbal", "latitud": -0.85, "longitud": -89.45, "nubosidad_pct": 15, "aptitud_sensor": 0.86, "indice_acumulacion": 0.90},
+  {"id": 12, "fecha": "2026-08-25", "satelite": "Sentinel-2B", "zona": "Isabela",       "latitud": -0.80, "longitud": -91.20, "nubosidad_pct": 40, "aptitud_sensor": 0.55, "indice_acumulacion": 0.38},
+  {"id": 13, "fecha": "2026-08-30", "satelite": "Sentinel-2A", "zona": "Española",      "latitud": -1.40, "longitud": -89.70, "nubosidad_pct": 25, "aptitud_sensor": 0.74, "indice_acumulacion": 0.77},
+  {"id": 14, "fecha": "2026-09-04", "satelite": "Sentinel-2B", "zona": "Floreana",      "latitud": -1.32, "longitud": -90.50, "nubosidad_pct": 11, "aptitud_sensor": 0.90, "indice_acumulacion": 0.45},
+  {"id": 15, "fecha": "2026-09-09", "satelite": "Sentinel-2A", "zona": "San Cristóbal", "latitud": -0.92, "longitud": -89.50, "nubosidad_pct": 20, "aptitud_sensor": 0.80, "indice_acumulacion": 0.85}
+]
