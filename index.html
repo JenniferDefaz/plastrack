@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlasTrack · Pasadas satelitales sobre Galápagos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+  :root {
+    --fondo: #eaf1f3; --tarjeta: #ffffff; --tinta: #0f2d37; --suave: #5a7580;
+    --linea: #cfdde2; --apta: #12907f; --noapta: #d9552b; --mar: #0b3c49;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo: #0a1a20; --tarjeta: #12282f; --tinta: #e6f1f4; --suave: #8fa9b3; --linea: #234049; --mar: #06242c; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Manrope", system-ui, sans-serif; background: var(--fondo); color: var(--tinta); line-height: 1.5; }
+  header { background: var(--mar); color: #e6f1f4; padding: 28px 20px 24px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header h1 { margin: 0 0 4px; font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; letter-spacing: -0.02em; }
+  header p { margin: 0; max-width: 62ch; color: #a9c6cf; }
+  main { padding: 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .card { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: 10px; padding: 16px 18px; }
+  .kpi .valor { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+  .kpi .nombre { font-weight: 600; margin-top: 4px; }
+  .kpi .nota { font-size: .82rem; color: var(--suave); }
+  .kpi.ok { border-left: 5px solid var(--apta); }
+  .kpi.alerta { border-left: 5px solid var(--noapta); }
+  .kpi.neutro { border-left: 5px solid var(--suave); }
+  .paneles { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 900px) { .paneles { grid-template-columns: 1.15fr 1fr; } }
+  h2 { font-size: 1.05rem; margin: 0 0 10px; }
+  #mapa { height: 420px; border-radius: 8px; border: 1px solid var(--linea); }
+  .graf { position: relative; height: 420px; }
+  .leyenda { font-size: .85rem; color: var(--suave); margin-top: 8px; }
+  .punto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 10px; }
+  #error { display: none; background: #fde8e1; color: #7a2410; border: 1px solid #f0b8a5; padding: 14px; border-radius: 8px; margin-bottom: 16px; }
+  footer { padding: 16px 20px 28px; color: var(--suave); font-size: .85rem; text-align: center; }
+  :focus-visible { outline: 3px solid #f2b705; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>PlasTrack</h1>
+    <p>Pasadas satelitales Sentinel-2 sobre Galápagos: cuáles sirven para detectar plástico flotante y dónde se acumula.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="error" role="alert"></div>
+
+  <section class="kpis" id="kpis" aria-label="Indicadores clave"></section>
+
+  <div class="paneles">
+    <section class="card" aria-label="Mapa de pasadas">
+      <h2>Mapa de pasadas y zonas de acumulación</h2>
+      <div id="mapa"></div>
+      <p class="leyenda">
+        <span class="punto" style="background:var(--apta)"></span>Pasada apta
+        <span class="punto" style="background:var(--noapta)"></span>No apta
+        &nbsp;· La capa de calor muestra el índice de acumulación.
+      </p>
+    </section>
+
+    <section class="card" aria-label="Tendencia">
+      <h2>Nubosidad y aptitud del sensor por fecha</h2>
+      <div class="graf"><canvas id="grafico" role="img" aria-label="Gráfico de nubosidad y aptitud por fecha"></canvas></div>
+      <p class="leyenda">Una pasada es apta con nubosidad ≤ 30 % y aptitud ≥ 0,6.</p>
+    </section>
+  </div>
+</main>
+
+<footer>Datos simulados (data_copernicus_sample.json) con fines académicos. No son mediciones reales.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  const UMBRAL_NUBES = 30;
+  const UMBRAL_APTITUD = 0.6;
+
+  const esValido = r =>
+    /^\d{4}-\d{2}-\d{2}$/.test(r.fecha) &&
+    r.nubosidad_pct >= 0 && r.nubosidad_pct <= 100 &&
+    r.aptitud_sensor >= 0 && r.aptitud_sensor <= 1 &&
+    Number.isFinite(r.latitud) && Number.isFinite(r.longitud);
+
+  const esApta = r => r.nubosidad_pct <= UMBRAL_NUBES && r.aptitud_sensor >= UMBRAL_APTITUD;
+  const promedio = a => a.reduce((s, x) => s + x, 0) / a.length;
+  const fmtFecha = f => new Date(f + "T00:00:00").toLocaleDateString("es-EC", { day: "numeric", month: "short", year: "numeric" });
+
+  fetch("data_copernicus_sample.json")
+    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(datos => {
+      const registros = datos.filter(esValido).sort((a, b) => a.fecha.localeCompare(b.fecha));
+      if (!registros.length) throw new Error("No hay registros válidos");
+      dibujarKpis(registros);
+      dibujarMapa(registros);
+      dibujarGrafico(registros);
+    })
+    .catch(e => {
+      const caja = document.getElementById("error");
+      caja.style.display = "block";
+      caja.textContent = "No se pudo cargar data_copernicus_sample.json (" + e.message +
+        "). Verifica que el archivo esté en la misma carpeta que index.html y abre la página desde GitHub Pages, no con doble clic.";
+    });
+
+  function dibujarKpis(r) {
+    const aptas = r.filter(esApta);
+    const pctAptas = aptas.length / r.length * 100;
+    const nubes = promedio(r.map(x => x.nubosidad_pct));
+    const aptitud = promedio(r.map(x => x.aptitud_sensor));
+    const ultima = aptas.length ? aptas[aptas.length - 1].fecha : null;
+    const dias = ultima ? Math.floor((Date.now() - new Date(ultima + "T00:00:00")) / 864e5) : null;
+
+    const kpis = [
+      { n: "Pasadas totales", v: r.length, nota: "Registros válidos cargados", c: "neutro" },
+      { n: "Pasadas aptas", v: pctAptas.toFixed(0) + " %", nota: aptas.length + " de " + r.length + " · meta ≥ 50 %", c: pctAptas >= 50 ? "ok" : "alerta" },
+      { n: "Nubosidad promedio", v: nubes.toFixed(1) + " %", nota: "Meta ≤ 35 %", c: nubes <= 35 ? "ok" : "alerta" },
+      { n: "Aptitud promedio", v: aptitud.toFixed(2), nota: "Escala de 0 a 1 · meta ≥ 0,6", c: aptitud >= UMBRAL_APTITUD ? "ok" : "alerta" },
+      { n: "Última pasada apta", v: ultima ? fmtFecha(ultima) : "Sin datos", nota: dias !== null ? "Hace " + dias + " días" : "Ninguna cumple la regla", c: "neutro" }
+    ];
+    document.getElementById("kpis").innerHTML = kpis.map(k =>
+      `<article class="card kpi ${k.c}"><div class="valor">${k.v}</div><div class="nombre">${k.n}</div><div class="nota">${k.nota}</div></article>`
+    ).join("");
+  }
+
+  function dibujarMapa(r) {
+    const mapa = L.map("mapa", { scrollWheelZoom: false }).setView([-0.7, -90.4], 8);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 12, attribution: "© OpenStreetMap"
+    }).addTo(mapa);
+
+    const marcadores = L.layerGroup();
+    r.forEach(x => {
+      const apta = esApta(x);
+      L.circleMarker([x.latitud, x.longitud], {
+        radius: 8, color: "#fff", weight: 2, fillOpacity: 0.95,
+        fillColor: apta ? "#12907f" : "#d9552b"
+      }).bindPopup(
+        `<strong>${x.zona}</strong><br>${fmtFecha(x.fecha)} · ${x.satelite}<br>` +
+        `Nubosidad: ${x.nubosidad_pct} %<br>Aptitud: ${x.aptitud_sensor}<br>` +
+        `Acumulación: ${x.indice_acumulacion}<br><strong>${apta ? "Apta" : "No apta"}</strong>`
+      ).addTo(marcadores);
+    });
+
+    const calor = L.heatLayer(r.map(x => [x.latitud, x.longitud, x.indice_acumulacion]), {
+      radius: 38, blur: 28, minOpacity: 0.35,
+      gradient: { 0.3: "#3b9ae1", 0.6: "#f2b705", 1: "#d62828" }
+    });
+
+    calor.addTo(mapa);
+    marcadores.addTo(mapa);
+    L.control.layers(null, { "Mapa de calor (acumulación)": calor, "Pasadas satelitales": marcadores }, { collapsed: false }).addTo(mapa);
+    mapa.fitBounds(L.latLngBounds(r.map(x => [x.latitud, x.longitud])).pad(0.2));
+  }
+
+  function dibujarGrafico(r) {
+    new Chart(document.getElementById("grafico"), {
+      type: "line",
+      data: {
+        labels: r.map(x => fmtFecha(x.fecha)),
+        datasets: [
+          { label: "Nubosidad (%)", data: r.map(x => x.nubosidad_pct), borderColor: "#d9552b", backgroundColor: "#d9552b", yAxisID: "yNubes", tension: 0.3 },
+          { label: "Aptitud del sensor (0–1)", data: r.map(x => x.aptitud_sensor), borderColor: "#12907f", backgroundColor: "#12907f", yAxisID: "yAptitud", tension: 0.3 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { position: "bottom" } },
+        scales: {
+          yNubes: { position: "left", min: 0, max: 100, title: { display: true, text: "Nubosidad (%)" } },
+          yAptitud: { position: "right", min: 0, max: 1, grid: { drawOnChartArea: false }, title: { display: true, text: "Aptitud (0–1)" } },
+          x: { ticks: { maxRotation: 60, autoSkip: true } }
+        }
+      }
+    });
+  }
+</script>
+</body>
+</html>
